@@ -1,0 +1,178 @@
+
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>کتابخانه امام محمدباقر (ع)</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f2f5f3;color:#24352c;font-family:Tahoma,Arial,sans-serif}
+header{background:#174b37;color:white;padding:28px 16px;text-align:center}
+header h2{margin:0 0 10px;font-size:22px}
+header p{margin:0;color:#d9eadf}
+main{max-width:850px;margin:22px auto;padding:12px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.stat,.panel{background:white;border-radius:12px;padding:16px;margin-bottom:15px;box-shadow:0 2px 8px #0000000b}
+.stat{text-align:center}
+.stat strong{display:block;font-size:24px;color:#176044;margin-bottom:6px}
+h3{margin-top:0;color:#17543c}
+input,select,button{width:100%;padding:12px;margin:6px 0;border:1px solid #d5ded8;border-radius:8px;font-family:inherit;font-size:14px}
+button{background:#176044;color:white;border:0;cursor:pointer}
+button:hover{background:#10442f}
+.book{border:1px solid #e1e8e3;padding:13px;border-radius:9px;margin:10px 0}
+.book small{color:#617469}
+.delete{background:#a83232;width:auto;padding:8px 13px}
+.location{color:#176044;font-weight:bold}
+@media(max-width:480px){.stats{gap:6px}.stat{padding:10px}.stat strong{font-size:20px}}
+</style>
+</head>
+<body>
+<header>
+<h2>کتابخانه امام محمدباقر (علیه‌السلام)</h2>
+<p>سامانه مدیریت و مکان‌یابی کتاب‌ها</p>
+</header>
+
+<main>
+<div class="stats">
+<div class="stat"><strong id="total">۰</strong>تعداد کتاب‌ها</div>
+<div class="stat"><strong>۳۰</strong>تعداد قفسه‌ها</div>
+<div class="stat"><strong>۱۵۰</strong>جایگاه‌ها</div>
+</div>
+
+<div class="panel">
+<h3>ثبت کتاب جدید</h3>
+<input id="title" placeholder="نام کتاب">
+<input id="author" placeholder="نام نویسنده">
+<input id="publisher" placeholder="ناشر">
+<input id="year" placeholder="سال انتشار">
+<label>شماره قفسه</label>
+<select id="shelf"></select>
+<label>شماره طبقه</label>
+<select id="level">
+<option value="1">طبقه ۱</option>
+<option value="2">طبقه ۲</option>
+<option value="3">طبقه ۳</option>
+<option value="4">طبقه ۴</option>
+<option value="5">طبقه ۵</option>
+</select>
+<button onclick="addBook()">ثبت کتاب</button>
+</div>
+
+<div class="panel">
+<h3>جست‌وجوی کتاب</h3>
+<input id="search" placeholder="نام کتاب یا نویسنده را وارد کنید..." oninput="render()">
+</div>
+
+<div class="panel">
+<h3>فهرست کتاب‌ها</h3>
+<div id="books"></div>
+</div>
+</main>
+
+<script>
+let books=JSON.parse(localStorage.getItem("libraryBooks")||"[]");
+
+const shelf=document.getElementById("shelf");
+for(let i=1;i<=30;i++){
+let option=document.createElement("option");
+option.value=i;
+option.textContent="قفسه "+i;
+shelf.appendChild(option);
+}
+
+function save(){
+localStorage.setItem("libraryBooks",JSON.stringify(books));
+}
+
+function addBook(){
+let title=document.getElementById("title").value.trim();
+let author=document.getElementById("author").value.trim();
+let publisher=document.getElementById("publisher").value.trim();
+let year=document.getElementById("year").value.trim();
+let s=shelf.value;
+let l=document.getElementById("level").value;
+
+if(!title){
+alert("لطفاً نام کتاب را وارد کنید.");
+return;
+}
+
+if(books.some(b=>b.shelf==s && b.level==l)){
+alert("این جایگاه قبلاً به کتاب دیگری اختصاص یافته است.");
+return;
+}
+
+books.push({
+id:Date.now(),
+title,author,publisher,year,
+shelf:s,level:l
+});
+
+save();
+document.getElementById("title").value="";
+document.getElementById("author").value="";
+document.getElementById("publisher").value="";
+document.getElementById("year").value="";
+render();
+alert("کتاب با موفقیت ثبت شد.");
+}
+
+function removeBook(id){
+if(confirm("آیا از حذف این کتاب مطمئن هستید؟")){
+books=books.filter(b=>b.id!==id);
+save();
+render();
+}
+}
+
+function render(){
+let q=document.getElementById("search").value.trim().toLowerCase();
+let list=books.filter(b=>
+b.title.toLowerCase().includes(q)||
+b.author.toLowerCase().includes(q)
+);
+
+document.getElementById("total").textContent=books.length.toLocaleString("fa-IR");
+
+let box=document.getElementById("books");
+box.innerHTML="";
+
+if(!list.length){
+box.innerHTML="<p>کتابی برای نمایش وجود ندارد.</p>";
+return;
+}
+
+list.forEach(b=>{
+let div=document.createElement("div");
+div.className="book";
+
+let name=document.createElement("strong");
+name.textContent=b.title;
+
+let details=document.createElement("div");
+details.innerHTML="<br>";
+details.append("نویسنده: "+(b.author||"ثبت نشده"));
+details.appendChild(document.createElement("br"));
+details.append("ناشر: "+(b.publisher||"ثبت نشده"));
+details.appendChild(document.createElement("br"));
+details.append("سال انتشار: "+(b.year||"ثبت نشده"));
+
+let loc=document.createElement("p");
+loc.className="location";
+loc.textContent="محل نگهداری: قفسه "+b.shelf+"، طبقه "+b.level;
+
+let del=document.createElement("button");
+del.className="delete";
+del.textContent="حذف کتاب";
+del.onclick=()=>removeBook(b.id);
+
+div.append(name,details,loc,del);
+box.appendChild(div);
+});
+}
+
+render();
+</script>
+</body>
+</html>
