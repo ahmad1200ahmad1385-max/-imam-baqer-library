@@ -1,178 +1,286 @@
-
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>کتابخانه امام محمدباقر (ع)</title>
+<title>کتابخانه امام محمدباقر (علیه‌السلام)</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box}
-body{margin:0;background:#f2f5f3;color:#24352c;font-family:Tahoma,Arial,sans-serif}
-header{background:#174b37;color:white;padding:28px 16px;text-align:center}
-header h2{margin:0 0 10px;font-size:22px}
-header p{margin:0;color:#d9eadf}
-main{max-width:850px;margin:22px auto;padding:12px}
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.stat,.panel{background:white;border-radius:12px;padding:16px;margin-bottom:15px;box-shadow:0 2px 8px #0000000b}
-.stat{text-align:center}
-.stat strong{display:block;font-size:24px;color:#176044;margin-bottom:6px}
+body{margin:0;background:#f3f5f4;color:#24352f;font-family:Tahoma,Arial,sans-serif;line-height:1.8}
+header{background:#174737;color:white;padding:24px 12px;text-align:center}
+header h2{margin:0 0 8px;font-size:21px}
+header p{margin:0;color:#d9eadf;font-size:13px}
+main{max-width:950px;margin:20px auto;padding:12px}
+.panel{background:white;border:1px solid #ddd;border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 2px 8px #00000008}
 h3{margin-top:0;color:#17543c}
-input,select,button{width:100%;padding:12px;margin:6px 0;border:1px solid #d5ded8;border-radius:8px;font-family:inherit;font-size:14px}
-button{background:#176044;color:white;border:0;cursor:pointer}
-button:hover{background:#10442f}
-.book{border:1px solid #e1e8e3;padding:13px;border-radius:9px;margin:10px 0}
-.book small{color:#617469}
-.delete{background:#a83232;width:auto;padding:8px 13px}
-.location{color:#176044;font-weight:bold}
-@media(max-width:480px){.stats{gap:6px}.stat{padding:10px}.stat strong{font-size:20px}}
+input,select,textarea{width:100%;padding:12px;margin:6px 0;border:1px solid #ccd5cf;border-radius:8px;font:inherit;background:white}
+textarea{min-height:85px}
+button{background:#176044;color:white;border:0;border-radius:8px;padding:10px 16px;font:inherit;cursor:pointer;margin:4px}
+button:hover{background:#104832}
+button.secondary{background:#64756d}
+button.danger{background:#a83232}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.book{border:1px solid #e1e8e3;border-radius:9px;padding:13px;margin:10px 0;background:#fff}
+.book strong{color:#174737;font-size:16px}
+small,.muted{color:#68766e;font-size:13px}
+.hidden{display:none!important}
+.notice{padding:10px;border-radius:8px;background:#edf5ef;margin:10px 0;overflow-wrap:anywhere}
+.error{background:#fff0f0;color:#a22}
+.actions{display:flex;flex-wrap:wrap;gap:5px}
+label{display:block;margin-top:8px;font-size:13px}
 </style>
 </head>
 <body>
 <header>
 <h2>کتابخانه امام محمدباقر (علیه‌السلام)</h2>
-<p>سامانه مدیریت و مکان‌یابی کتاب‌ها</p>
+<p>سامانه جست‌وجو و مدیریت کتابخانه</p>
 </header>
-
 <main>
-<div class="stats">
-<div class="stat"><strong id="total">۰</strong>تعداد کتاب‌ها</div>
-<div class="stat"><strong>۳۰</strong>تعداد قفسه‌ها</div>
-<div class="stat"><strong>۱۵۰</strong>جایگاه‌ها</div>
-</div>
-
-<div class="panel">
-<h3>ثبت کتاب جدید</h3>
-<input id="title" placeholder="نام کتاب">
-<input id="author" placeholder="نام نویسنده">
-<input id="publisher" placeholder="ناشر">
-<input id="year" placeholder="سال انتشار">
-<label>شماره قفسه</label>
-<select id="shelf"></select>
-<label>شماره طبقه</label>
-<select id="level">
-<option value="1">طبقه ۱</option>
-<option value="2">طبقه ۲</option>
-<option value="3">طبقه ۳</option>
-<option value="4">طبقه ۴</option>
-<option value="5">طبقه ۵</option>
-</select>
-<button onclick="addBook()">ثبت کتاب</button>
-</div>
-
 <div class="panel">
 <h3>جست‌وجوی کتاب</h3>
-<input id="search" placeholder="نام کتاب یا نویسنده را وارد کنید..." oninput="render()">
+<input id="search" placeholder="نام کتاب، نویسنده یا ناشر را وارد کنید">
+<div id="books"></div><div id="publicMessage"></div>
 </div>
-
 <div class="panel">
-<h3>فهرست کتاب‌ها</h3>
-<div id="books"></div>
+<h3>ورود مدیر</h3>
+<div id="loginBox">
+<input id="email" type="email" placeholder="ایمیل مدیر">
+<input id="password" type="password" placeholder="رمز عبور">
+<button onclick="login()">ورود به پنل مدیریت</button>
+<div id="loginMessage"></div>
 </div>
+<div id="adminInfo" class="hidden">
+<div class="notice">وارد حساب مدیریت شده‌اید.</div>
+<button class="secondary" onclick="logout()">خروج از حساب</button>
+</div>
+</div>
+<section id="adminPanel" class="hidden">
+<div class="panel">
+<h3>ثبت یا ویرایش کتاب</h3>
+<input id="bookId" type="hidden">
+<label>نام کتاب</label><input id="title" placeholder="نام کتاب">
+<div class="grid">
+<div><label>نویسنده</label><input id="author" placeholder="نام نویسنده"></div>
+<div><label>ناشر</label><input id="publisher" placeholder="ناشر"></div>
+<div><label>سال انتشار</label><input id="year" type="number" placeholder="سال انتشار"></div>
+</div>
+<label>قفسه و طبقه</label><select id="level"></select>
+<label>توضیحات</label><textarea id="description" placeholder="توضیحات کتاب (اختیاری)"></textarea>
+<button onclick="saveBook()">ذخیره کتاب</button>
+<button class="secondary" onclick="clearBookForm()">پاک کردن فرم</button>
+<div id="bookMessage"></div>
+</div>
+<div class="panel">
+<h3>مدیریت اعضا</h3>
+<div class="grid">
+<div><label>نام و نام خانوادگی</label><input id="borrowerName" placeholder="نام عضو"></div>
+<div><label>شماره تماس</label><input id="borrowerPhone" placeholder="شماره تماس"></div>
+<div><label>کد عضویت</label><input id="borrowerCode" placeholder="کد عضویت"></div>
+</div>
+<button onclick="addBorrower()">ثبت عضو</button>
+<div id="borrowerList"></div><div id="borrowerMessage"></div>
+</div>
+<div class="panel">
+<h3>ثبت امانت کتاب</h3>
+<label>کتاب</label><select id="loanBook"></select>
+<label>عضو کتابخانه</label><select id="loanBorrower"></select>
+<label>تاریخ امانت</label><input id="loanDate" type="date">
+<label>تاریخ بازگشت مقرر</label><input id="dueDate" type="date">
+<button onclick="createLoan()">ثبت امانت</button>
+<div id="loanMessage"></div>
+</div>
+<div class="panel"><h3>فهرست امانت‌ها</h3><div id="loanList"></div></div>
+</section>
 </main>
-
 <script>
-let books=JSON.parse(localStorage.getItem("libraryBooks")||"[]");
+const SUPABASE_URL = "https://hmbxjhqvchcchtonlsae.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_3fE7n__ZF_Zitc8jkMWS3Q_ka1UoN0M";
+const db = window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+let isAdmin=false, allBooks=[], allLevels=[], allBorrowers=[], activeLoanBookIds=[];
 
-const shelf=document.getElementById("shelf");
-for(let i=1;i<=30;i++){
-let option=document.createElement("option");
-option.value=i;
-option.textContent="قفسه "+i;
-shelf.appendChild(option);
+function message(id,text,error=false){
+ const el=document.getElementById(id); el.textContent=text;
+ el.className=error?"notice error":"notice";
 }
-
-function save(){
-localStorage.setItem("libraryBooks",JSON.stringify(books));
+function escapeHTML(v){
+ return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
-
-function addBook(){
-let title=document.getElementById("title").value.trim();
-let author=document.getElementById("author").value.trim();
-let publisher=document.getElementById("publisher").value.trim();
-let year=document.getElementById("year").value.trim();
-let s=shelf.value;
-let l=document.getElementById("level").value;
-
-if(!title){
-alert("لطفاً نام کتاب را وارد کنید.");
-return;
+function showAdmin(show){
+ document.getElementById("loginBox").classList.toggle("hidden",show);
+ document.getElementById("adminInfo").classList.toggle("hidden",!show);
+ document.getElementById("adminPanel").classList.toggle("hidden",!show);
 }
-
-if(books.some(b=>b.shelf==s && b.level==l)){
-alert("این جایگاه قبلاً به کتاب دیگری اختصاص یافته است.");
-return;
+async function loadLevels(){
+ const {data,error}=await db.from("shelf_levels").select("id,level_number,name,shelves(shelf_number,name)").order("id");
+ if(error){message("bookMessage","خطا در دریافت قفسه‌ها: "+error.message,true);return;}
+ allLevels=data||[];
+ document.getElementById("level").innerHTML=allLevels.map(x=>
+  `<option value="${x.id}">قفسه ${x.shelves?.shelf_number??"؟"} - طبقه ${x.level_number}</option>`
+ ).join("");
 }
+async function loadBooks(){
+ const {data,error}=await db.from("books")
+  .select("id,title,author,publisher,publish_year,shelf_level_id,description,is_active,shelf_levels(level_number,shelves(shelf_number))")
+  .eq("is_active",true).order("title");
+ if(error){message("publicMessage","خطا در دریافت کتاب‌ها: "+error.message,true);return;}
+ allBooks=data||[]; renderBooks(); if(isAdmin) fillLoanBooks();
+}
+function renderBooks(){
+ const q=document.getElementById("search").value.trim().toLowerCase();
+ const rows=allBooks.filter(b=>[b.title,b.author,b.publisher].some(v=>(v||"").toLowerCase().includes(q)));
+ document.getElementById("books").innerHTML=rows.length?rows.map(b=>{
+  const loc=b.shelf_levels, shelf=loc?.shelves?.shelf_number??"نامشخص", level=loc?.level_number??"نامشخص";
+  const loaned=activeLoanBookIds.includes(b.id);
+  return `<div class="book"><strong>${escapeHTML(b.title)}</strong>
+   <p>نویسنده: ${escapeHTML(b.author)}</p><p>ناشر: ${escapeHTML(b.publisher)}</p>
+   <p>سال انتشار: ${escapeHTML(b.publish_year)}</p><p>محل نگهداری: قفسه ${shelf}، طبقه ${level}</p>
+   <p>وضعیت: ${loaned?"امانت داده شده":"موجود"}</p>
+   ${b.description?`<small>${escapeHTML(b.description)}</small>`:""}
+   ${isAdmin?`<div class="actions"><button onclick="editBook(${b.id})">ویرایش</button><button class="danger" onclick="deactivateBook(${b.id})">حذف از فهرست</button></div>`:""}
+  </div>`;
+ }).join(""):"<p>کتابی با این مشخصات پیدا نشد.</p>";
+}
+document.getElementById("search").addEventListener("input",renderBooks);
 
-books.push({
-id:Date.now(),
-title,author,publisher,year,
-shelf:s,level:l
+async function login(){
+ const email=document.getElementById("email").value.trim(), password=document.getElementById("password").value;
+ if(!email||!password){message("loginMessage","ایمیل و رمز عبور را وارد کنید.",true);return;}
+ const {error}=await db.auth.signInWithPassword({email,password});
+ if(error){message("loginMessage","ورود ناموفق: "+error.message,true);return;}
+ await checkSession();
+}
+async function logout(){
+ await db.auth.signOut(); isAdmin=false; activeLoanBookIds=[]; showAdmin(false);
+ await loadBooks(); message("loginMessage","از حساب خارج شدید.");
+}
+async function checkSession(){
+ const {data:{user},error:userError}=await db.auth.getUser();
+ if(userError||!user){isAdmin=false;showAdmin(false);return;}
+ const {data,error}=await db.from("profiles").select("role").eq("id",user.id).single();
+ if(error||data?.role!=="admin"){
+  await db.auth.signOut(); isAdmin=false; showAdmin(false);
+  message("loginMessage","این حساب دسترسی مدیریت ندارد.",true);return;
+ }
+ isAdmin=true; showAdmin(true); message("loginMessage","ورود مدیر با موفقیت انجام شد.");
+ await loadAdminData(); await loadBooks();
+}
+async function loadAdminData(){
+ await loadLevels(); await loadBorrowers(); await loadLoans(); fillLoanBooks();
+}
+function clearBookForm(){
+ ["bookId","title","author","publisher","year","description"].forEach(id=>document.getElementById(id).value="");
+}
+async function saveBook(){
+ if(!isAdmin)return;
+ const title=document.getElementById("title").value.trim(), level=document.getElementById("level").value;
+ const yearText=document.getElementById("year").value.trim(), id=document.getElementById("bookId").value;
+ if(!title||!level){message("bookMessage","نام کتاب و محل نگهداری را وارد کنید.",true);return;}
+ const record={title,author:document.getElementById("author").value.trim(),
+  publisher:document.getElementById("publisher").value.trim(),
+  publish_year:yearText?Number(yearText):null,shelf_level_id:Number(level),
+  description:document.getElementById("description").value.trim(),is_active:true};
+ const result=id?await db.from("books").update(record).eq("id",Number(id)):await db.from("books").insert(record);
+ if(result.error){message("bookMessage","خطا: "+result.error.message,true);return;}
+ message("bookMessage","اطلاعات کتاب ذخیره شد.");clearBookForm();await loadBooks();
+}
+function editBook(id){
+ const b=allBooks.find(x=>x.id===id);if(!b)return;
+ document.getElementById("bookId").value=b.id;
+ document.getElementById("title").value=b.title||"";
+ document.getElementById("author").value=b.author||"";
+ document.getElementById("publisher").value=b.publisher||"";
+ document.getElementById("year").value=b.publish_year||"";
+ document.getElementById("level").value=b.shelf_level_id;
+ document.getElementById("description").value=b.description||"";
+ window.scrollTo({top:0,behavior:"smooth"});
+}
+async function deactivateBook(id){
+ if(!isAdmin||!confirm("این کتاب از فهرست عمومی پنهان شود؟"))return;
+ const {error}=await db.from("books").update({is_active:false}).eq("id",id);
+ if(error){alert("عملیات انجام نشد: "+error.message);return;}
+ await loadBooks();message("bookMessage","کتاب از فهرست عمومی خارج شد؛ سوابق امانت حفظ شد.");
+}
+async function loadBorrowers(){
+ const {data,error}=await db.from("borrowers").select("*").order("full_name");
+ if(error){message("borrowerMessage","خطا: "+error.message,true);return;}
+ allBorrowers=data||[];
+ document.getElementById("borrowerList").innerHTML=allBorrowers.length?allBorrowers.map(b=>
+  `<div class="book"><strong>${escapeHTML(b.full_name)}</strong><p>شماره تماس: ${escapeHTML(b.phone)}</p><small>کد عضویت: ${escapeHTML(b.member_code)}</small></div>`
+ ).join(""):"<p>هنوز عضوی ثبت نشده است.</p>";
+ document.getElementById("loanBorrower").innerHTML=allBorrowers.map(b=>
+  `<option value="${b.id}">${escapeHTML(b.full_name)} - ${escapeHTML(b.member_code)}</option>`
+ ).join("");
+}
+async function addBorrower(){
+ if(!isAdmin)return;
+ const full_name=document.getElementById("borrowerName").value.trim();
+ const phone=document.getElementById("borrowerPhone").value.trim();
+ const member_code=document.getElementById("borrowerCode").value.trim();
+ if(!full_name){message("borrowerMessage","نام عضو را وارد کنید.",true);return;}
+ const {error}=await db.from("borrowers").insert({full_name,phone,member_code});
+ if(error){message("borrowerMessage","خطا: "+error.message,true);return;}
+ ["borrowerName","borrowerPhone","borrowerCode"].forEach(id=>document.getElementById(id).value="");
+ message("borrowerMessage","عضو ثبت شد.");await loadBorrowers();
+}
+async function fillLoanBooks(){
+ const {data,error}=await db.from("loans").select("book_id").is("return_date",null);
+ if(error){message("loanMessage","خطا در بررسی امانت‌ها: "+error.message,true);return;}
+ activeLoanBookIds=(data||[]).map(x=>x.book_id);
+ const available=allBooks.filter(b=>!activeLoanBookIds.includes(b.id));
+ document.getElementById("loanBook").innerHTML=available.map(b=>
+  `<option value="${b.id}">${escapeHTML(b.title)}</option>`
+ ).join("");
+ renderBooks();
+}
+async function createLoan(){
+ if(!isAdmin)return;
+ const book_id=document.getElementById("loanBook").value;
+ const borrower_id=document.getElementById("loanBorrower").value;
+ const loan_date=document.getElementById("loanDate").value;
+ const due_date=document.getElementById("dueDate").value;
+ if(!book_id||!borrower_id||!loan_date||!due_date){message("loanMessage","همه اطلاعات امانت را وارد کنید.",true);return;}
+ if(due_date<loan_date){message("loanMessage","تاریخ بازگشت نمی‌تواند قبل از تاریخ امانت باشد.",true);return;}
+ const {data:active,error:checkError}=await db.from("loans").select("id").eq("book_id",Number(book_id)).is("return_date",null);
+ if(checkError){message("loanMessage",checkError.message,true);return;}
+ if(active?.length){message("loanMessage","این کتاب در حال حاضر امانت داده شده است.",true);return;}
+ const {error}=await db.from("loans").insert({book_id:Number(book_id),borrower_id:Number(borrower_id),loan_date,due_date});
+ if(error){message("loanMessage","خطا: "+error.message,true);return;}
+ message("loanMessage","امانت با موفقیت ثبت شد.");await loadLoans();await fillLoanBooks();
+}
+async function loadLoans(){
+ const {data,error}=await db.from("loans")
+  .select("id,book_id,borrower_id,loan_date,due_date,return_date,books(title),borrowers(full_name)")
+  .order("loan_date",{ascending:false});
+ if(error){message("loanMessage","خطا: "+error.message,true);return;}
+ const rows=data||[];
+ activeLoanBookIds=rows.filter(x=>!x.return_date).map(x=>x.book_id);
+ document.getElementById("loanList").innerHTML=rows.length?rows.map(l=>
+  `<div class="book"><strong>${escapeHTML(l.books?.title||"کتاب")}</strong>
+   <p>عضو: ${escapeHTML(l.borrowers?.full_name||"")}</p>
+   <p>تاریخ امانت: ${escapeHTML(l.loan_date)} | موعد بازگشت: ${escapeHTML(l.due_date)}</p>
+   <p>${l.return_date?"تاریخ بازگشت: "+escapeHTML(l.return_date):"وضعیت: امانت فعال"}</p>
+   ${!l.return_date?`<button onclick="returnBook(${l.id})">ثبت بازگشت کتاب</button>`:""}
+  </div>`
+ ).join(""):"<p>هنوز امانتی ثبت نشده است.</p>";
+}
+async function returnBook(id){
+ if(!isAdmin)return;
+ const return_date=prompt("تاریخ بازگشت را به شکل YYYY-MM-DD وارد کنید:",new Date().toISOString().slice(0,10));
+ if(!return_date)return;
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(return_date)){alert("قالب تاریخ درست نیست.");return;}
+ const {error}=await db.from("loans").update({return_date}).eq("id",id).is("return_date",null);
+ if(error){alert("ثبت بازگشت انجام نشد: "+error.message);return;}
+ await loadLoans();await fillLoanBooks();message("loanMessage","بازگشت کتاب ثبت شد.");
+}
+db.auth.onAuthStateChange((event,session)=>{
+ if(event==="SIGNED_OUT"){isAdmin=false;showAdmin(false);}
 });
-
-save();
-document.getElementById("title").value="";
-document.getElementById("author").value="";
-document.getElementById("publisher").value="";
-document.getElementById("year").value="";
-render();
-alert("کتاب با موفقیت ثبت شد.");
-}
-
-function removeBook(id){
-if(confirm("آیا از حذف این کتاب مطمئن هستید؟")){
-books=books.filter(b=>b.id!==id);
-save();
-render();
-}
-}
-
-function render(){
-let q=document.getElementById("search").value.trim().toLowerCase();
-let list=books.filter(b=>
-b.title.toLowerCase().includes(q)||
-b.author.toLowerCase().includes(q)
-);
-
-document.getElementById("total").textContent=books.length.toLocaleString("fa-IR");
-
-let box=document.getElementById("books");
-box.innerHTML="";
-
-if(!list.length){
-box.innerHTML="<p>کتابی برای نمایش وجود ندارد.</p>";
-return;
-}
-
-list.forEach(b=>{
-let div=document.createElement("div");
-div.className="book";
-
-let name=document.createElement("strong");
-name.textContent=b.title;
-
-let details=document.createElement("div");
-details.innerHTML="<br>";
-details.append("نویسنده: "+(b.author||"ثبت نشده"));
-details.appendChild(document.createElement("br"));
-details.append("ناشر: "+(b.publisher||"ثبت نشده"));
-details.appendChild(document.createElement("br"));
-details.append("سال انتشار: "+(b.year||"ثبت نشده"));
-
-let loc=document.createElement("p");
-loc.className="location";
-loc.textContent="محل نگهداری: قفسه "+b.shelf+"، طبقه "+b.level;
-
-let del=document.createElement("button");
-del.className="delete";
-del.textContent="حذف کتاب";
-del.onclick=()=>removeBook(b.id);
-
-div.append(name,details,loc,del);
-box.appendChild(div);
-});
-}
-
-render();
+(async()=>{
+ document.getElementById("loanDate").value=new Date().toISOString().slice(0,10);
+ await loadBooks();
+ await checkSession();
+})();
 </script>
 </body>
 </html>
