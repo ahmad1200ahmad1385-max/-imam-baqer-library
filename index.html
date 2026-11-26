@@ -78,7 +78,8 @@ label{display:block;margin-top:8px;font-size:13px}
 <div><label>شماره تماس</label><input id="borrowerPhone" placeholder="شماره تماس"></div>
 <div><label>کد عضویت</label><input id="borrowerCode" placeholder="کد عضویت"></div>
 </div>
-<button onclick="addBorrower()">ثبت عضو</button>
+<button id="borrowerSaveButton" onclick="addBorrower()">ثبت عضو</button>
+<button id="borrowerCancelButton" class="secondary hidden" onclick="cancelBorrowerEdit()">لغو ویرایش</button>
 <div id="borrowerList"></div><div id="borrowerMessage"></div>
 </div>
 <div class="panel">
@@ -98,6 +99,7 @@ const SUPABASE_URL = "https://hmbxjhqvchcchtonlsae.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_3fE7n__ZF_Zitc8jkMWS3Q_ka1UoN0M";
 const db = window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 let isAdmin=false, allBooks=[], allLevels=[], allBorrowers=[], activeLoanBookIds=[];
+let editingBorrowerId=null;
 
 function message(id,text,error=false){
  const el=document.getElementById(id); el.textContent=text;
@@ -201,16 +203,43 @@ async function deactivateBook(id){
  if(error){alert("عملیات انجام نشد: "+error.message);return;}
  await loadBooks();message("bookMessage","کتاب از فهرست عمومی خارج شد؛ سوابق امانت حفظ شد.");
 }
+
+function cancelBorrowerEdit(){
+ editingBorrowerId=null;
+ ["borrowerName","borrowerPhone","borrowerCode"].forEach(id=>document.getElementById(id).value="");
+ document.getElementById("borrowerSaveButton").textContent="ثبت عضو";
+ document.getElementById("borrowerCancelButton").classList.add("hidden");
+}
 async function loadBorrowers(){
  const {data,error}=await db.from("borrowers").select("*").order("full_name");
  if(error){message("borrowerMessage","خطا: "+error.message,true);return;}
  allBorrowers=data||[];
  document.getElementById("borrowerList").innerHTML=allBorrowers.length?allBorrowers.map(b=>
-  `<div class="book"><strong>${escapeHTML(b.full_name)}</strong><p>شماره تماس: ${escapeHTML(b.phone)}</p><small>کد عضویت: ${escapeHTML(b.member_code)}</small></div>`
+  `<div class="book">
+    <strong>${escapeHTML(b.full_name)}</strong>
+    <p>شماره تماس: ${escapeHTML(b.phone)}</p>
+    <small>کد عضویت: ${escapeHTML(b.member_code)}</small>
+    <div class="actions">
+     <button onclick="editBorrower(${Number(b.id)})">ویرایش</button>
+     <button class="danger" onclick="deleteBorrower(${Number(b.id)})">حذف عضو</button>
+    </div>
+   </div>`
  ).join(""):"<p>هنوز عضوی ثبت نشده است.</p>";
  document.getElementById("loanBorrower").innerHTML=allBorrowers.map(b=>
   `<option value="${b.id}">${escapeHTML(b.full_name)} - ${escapeHTML(b.member_code)}</option>`
  ).join("");
+}
+function editBorrower(id){
+ if(!isAdmin)return;
+ const b=allBorrowers.find(x=>Number(x.id)===Number(id));
+ if(!b)return;
+ editingBorrowerId=Number(b.id);
+ document.getElementById("borrowerName").value=b.full_name||"";
+ document.getElementById("borrowerPhone").value=b.phone||"";
+ document.getElementById("borrowerCode").value=b.member_code||"";
+ document.getElementById("borrowerSaveButton").textContent="ذخیره ویرایش";
+ document.getElementById("borrowerCancelButton").classList.remove("hidden");
+ document.getElementById("borrowerName").scrollIntoView({behavior:"smooth",block:"center"});
 }
 async function addBorrower(){
  if(!isAdmin)return;
@@ -218,10 +247,35 @@ async function addBorrower(){
  const phone=document.getElementById("borrowerPhone").value.trim();
  const member_code=document.getElementById("borrowerCode").value.trim();
  if(!full_name){message("borrowerMessage","نام عضو را وارد کنید.",true);return;}
- const {error}=await db.from("borrowers").insert({full_name,phone,member_code});
- if(error){message("borrowerMessage","خطا: "+error.message,true);return;}
- ["borrowerName","borrowerPhone","borrowerCode"].forEach(id=>document.getElementById(id).value="");
- message("borrowerMessage","عضو ثبت شد.");await loadBorrowers();
+ const record={full_name,phone,member_code};
+ const wasEditing=editingBorrowerId!==null;
+ const result=wasEditing
+  ? await db.from("borrowers").update(record).eq("id",editingBorrowerId)
+  : await db.from("borrowers").insert(record);
+ if(result.error){message("borrowerMessage","خطا: "+result.error.message,true);return;}
+ cancelBorrowerEdit();
+ message("borrowerMessage",wasEditing?"اطلاعات عضو با موفقیت ویرایش شد.":"عضو با موفقیت ثبت شد.");
+ await loadBorrowers();
+}
+async function deleteBorrower(id){
+ if(!isAdmin)return;
+ const borrower=allBorrowers.find(x=>Number(x.id)===Number(id));
+ if(!borrower)return;
+ const {data:loans,error:loanError}=await db.from("loans").select("id,return_date").eq("borrower_id",Number(id));
+ if(loanError){message("borrowerMessage","امکان بررسی سوابق امانت وجود ندارد: "+loanError.message,true);return;}
+ if((loans||[]).length){
+  const hasActive=(loans||[]).some(x=>!x.return_date);
+  message("borrowerMessage",hasActive
+   ?"این عضو امانت فعال دارد و قابل حذف نیست. ابتدا کتاب را تحویل بگیرید."
+   :"برای حفظ سوابق امانت‌های قبلی، حذف این عضو مجاز نیست.",true);
+  return;
+ }
+ if(!confirm("آیا از حذف عضو «"+borrower.full_name+"» مطمئن هستید؟"))return;
+ const {error}=await db.from("borrowers").delete().eq("id",Number(id));
+ if(error){message("borrowerMessage","حذف عضو انجام نشد: "+error.message,true);return;}
+ if(editingBorrowerId===Number(id))cancelBorrowerEdit();
+ message("borrowerMessage","عضو با موفقیت حذف شد.");
+ await loadBorrowers();
 }
 async function fillLoanBooks(){
  const {data,error}=await db.from("loans").select("book_id").is("return_date",null);
