@@ -6,8 +6,8 @@
 <meta name="theme-color" content="#123f32">
 <meta name="description" content="سامانه جست‌وجو و مدیریت کتابخانه امام محمدباقر علیه‌السلام">
 <link rel="manifest" href="./manifest.webmanifest">
-<link rel="icon" href="./icons/icon-192.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="./icons/icon-192.svg">
+<link rel="icon" href="./icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
 <title>کتابخانه امام محمدباقر (علیه‌السلام)</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -35,7 +35,7 @@ footer{text-align:center;color:var(--muted);font-size:11px;padding:10px}
 <header>
   <h1>کتابخانه امام محمدباقر (علیه‌السلام)</h1>
   <p>سامانه جست‌وجو و مدیریت کتابخانه</p>
-  <button id="installBtn">نصب برنامه روی گوشی</button>
+  <button id="installBtn" type="button">نصب برنامه روی گوشی</button>
 </header>
 <main>
 <section class="panel">
@@ -226,10 +226,45 @@ async function returnBook(id){
 }
 db.auth.onAuthStateChange((event)=>{if(event==="SIGNED_OUT"){isAdmin=false;showAdmin(false)}});
 (async()=>{$("loanDate").value=new Date().toISOString().slice(0,10);await loadBooks();await checkSession()})();
+
+/* نصب برنامه */
 let installPrompt=null;
-window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();installPrompt=e;$("installBtn").style.display="inline-block"});
-$("installBtn").addEventListener("click",async()=>{if(!installPrompt)return;installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;$("installBtn").style.display="none"});
-if("serviceWorker" in navigator && location.protocol.startsWith("http")) window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
+const installButton=$("installBtn");
+const isStandalone=()=>window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone===true;
+
+if(!isStandalone()){
+  installButton.style.display="inline-block";
+}
+window.addEventListener("beforeinstallprompt",event=>{
+  event.preventDefault();
+  installPrompt=event;
+  if(!isStandalone()) installButton.style.display="inline-block";
+});
+installButton.addEventListener("click",async()=>{
+  if(isStandalone()){
+    installButton.style.display="none";
+    return;
+  }
+  if(installPrompt){
+    installPrompt.prompt();
+    try{
+      const choice=await installPrompt.userChoice;
+      if(choice && choice.outcome==="accepted") installButton.style.display="none";
+    }catch(error){
+      alert("برای نصب، از منوی مرورگر گزینه «نصب برنامه» را انتخاب کنید.");
+    }
+    installPrompt=null;
+    return;
+  }
+  alert("برای نصب برنامه، منوی مرورگر را باز کنید و گزینه «نصب برنامه» یا «افزودن به صفحه اصلی» را انتخاب کنید. اگر این گزینه را نمی‌بینید، صفحه را با مرورگر Chrome باز کنید و پس از چند لحظه دوباره بررسی کنید.");
+});
+if("serviceWorker" in navigator && location.protocol==="https:"){
+  window.addEventListener("load",()=>{
+    navigator.serviceWorker.register("./sw.js",{scope:"./"}).catch(error=>{
+      console.error("ثبت Service Worker انجام نشد:",error);
+    });
+  });
+}
 </script>
 </body>
 </html>
