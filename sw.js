@@ -1,4 +1,4 @@
-const CACHE_NAME = "imam-baqer-library-app-v2";
+const CACHE_NAME = "imam-baqer-library-app-v3";
 
 const APP_SHELL = [
   "./",
@@ -38,25 +38,36 @@ self.addEventListener("fetch", event => {
 
   const url = new URL(request.url);
 
+  // فقط فایل‌های هم‌مبدأ کش می‌شوند؛ درخواست‌های Supabase و CDN دست‌نخورده می‌مانند.
   if (url.origin !== self.location.origin) return;
 
+  // برای صفحه‌ها ابتدا نسخه آنلاین و در حالت آفلاین نسخه ذخیره‌شده ارائه می‌شود.
+  if (request.mode === "navigate") {
+    event.respondWith(
+      fetch(request)
+        .then(response => {
+          if (response && response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put("./index.html", copy));
+          }
+          return response;
+        })
+        .catch(() => caches.match("./index.html"))
+    );
+    return;
+  }
+
   event.respondWith(
-    fetch(request)
-      .then(response => {
+    caches.match(request).then(cached => {
+      if (cached) return cached;
+
+      return fetch(request).then(response => {
         if (response && response.ok) {
           const copy = response.clone();
-
-          caches.open(CACHE_NAME)
-            .then(cache => cache.put(request, copy));
+          caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
         }
-
         return response;
-      })
-      .catch(() =>
-        caches.match(request)
-          .then(cached =>
-            cached || caches.match("./index.html")
-          )
-      )
+      });
+    })
   );
 });
